@@ -107,3 +107,5 @@
         private System.Windows.Forms.DataGridView dgvTransaksi;
     }
 }
+
+// FORM PEMASUKKAN DESIGN
