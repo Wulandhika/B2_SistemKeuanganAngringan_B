@@ -122,3 +122,5 @@
         private System.Windows.Forms.DataGridView dgvDetail;
     }
 }
+
+// FORM DESIGN RIWAYAT
