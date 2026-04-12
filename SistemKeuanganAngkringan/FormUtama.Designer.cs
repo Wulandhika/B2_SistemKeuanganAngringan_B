@@ -110,3 +110,5 @@
         private System.Windows.Forms.Button btnLogout;
     }
 }
+
+// FORM DESIGNER UNTUK FORM UTAMA - MENU UTAMA APLIKASI SISTEM KEUANGAN ANGRINGAN
