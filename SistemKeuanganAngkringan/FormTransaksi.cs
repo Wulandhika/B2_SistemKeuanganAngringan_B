@@ -168,3 +168,4 @@ namespace SistemKeuanganAngkringan
         }
     }
 }
+// FORM TRANSAKSI: Form untuk melakukan transaksi penjualan. Pengguna dapat memilih menu, menentukan jumlah, dan menyimpan transaksi ke database. Transaksi disimpan dalam tabel 'transaksi' dan detailnya disimpan dalam tabel 'detail_transaksi'.
