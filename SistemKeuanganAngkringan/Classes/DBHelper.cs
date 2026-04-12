@@ -27,4 +27,4 @@ namespace SistemKeuanganAngkringan.Classes
     }
 }
 
-// CLASS
+// CLASS DBHelper ini berfungsi untuk mengelola koneksi ke database SQL Server.
