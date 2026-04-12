@@ -80,3 +80,4 @@ namespace SistemKeuanganAngkringan
 }
 
 // FORM PEMASUKAN
+// - Menampilkan jumlah transaksi dan total pemasukan berdasarkan tanggal yang dipilih
