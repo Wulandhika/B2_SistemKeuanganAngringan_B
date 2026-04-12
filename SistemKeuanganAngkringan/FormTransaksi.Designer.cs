@@ -137,3 +137,5 @@
         private System.Windows.Forms.Button btnBatal;
     }
 }
+
+// FORM DESIGN TRANSAKSI
