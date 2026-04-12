@@ -76,3 +76,4 @@ namespace SistemKeuanganAngkringan
 }
 
 // FORM LOGIN
+// - Validasi input username dan password
