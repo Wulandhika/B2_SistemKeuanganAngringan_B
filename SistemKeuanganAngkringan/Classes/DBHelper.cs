@@ -28,3 +28,4 @@ namespace SistemKeuanganAngkringan.Classes
 }
 
 // CLASS DBHelper ini berfungsi untuk mengelola koneksi ke database SQL Server.
+// Kamu bisa menggunakan DBHelper.GetConnection() untuk mendapatkan objek SqlConnection yang sudah terkonfigurasi dengan connection string yang benar.
