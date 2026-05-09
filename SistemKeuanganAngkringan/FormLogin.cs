@@ -41,3 +41,21 @@ namespace SistemKeuanganAngkringan
                     return;
                 }
 
+                // ========== VALIDASI PASSWORD ==========
+                if (string.IsNullOrWhiteSpace(txtPassword.Text))
+                {
+                    MessageBox.Show("Password harus diisi!", "Validasi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtPassword.Focus();
+                    return;
+                }
+
+                // Validasi panjang password maksimal 10 karakter (karena di database VARCHAR(10))
+                if (txtPassword.Text.Length > 10)
+                {
+                    MessageBox.Show("Password maksimal 10 karakter!", "Validasi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtPassword.Focus();
+                    return;
+                }
+
