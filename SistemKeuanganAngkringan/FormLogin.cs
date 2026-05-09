@@ -85,3 +85,17 @@ namespace SistemKeuanganAngkringan
                     FormUtama formUtama = new FormUtama();
                     formUtama.Show();
 
+                    // Sembunyikan Form Login
+                    this.Hide();
+                }
+                else
+                {
+                    // Login gagal
+                    MessageBox.Show("Username atau Password salah!", "Gagal",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                    // Kosongkan password
+                    txtPassword.Text = "";
+                    txtPassword.Focus();
+                }
+
