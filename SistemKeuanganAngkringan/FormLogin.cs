@@ -69,3 +69,8 @@ namespace SistemKeuanganAngkringan
                 cmd.Parameters.AddWithValue("@user", txtUsername.Text.Trim());
                 cmd.Parameters.AddWithValue("@pass", txtPassword.Text.Trim());
 
+                // Jalankan query dan baca hasil
+                SqlDataReader reader = cmd.ExecuteReader();
+
+                if (reader.Read())
+                {
