@@ -99,3 +99,9 @@ namespace SistemKeuanganAngkringan
                     txtPassword.Focus();
                 }
 
+                // Tutup reader dan koneksi
+                reader.Close();
+                DBHelper.CloseConnection(conn);
+            }
+            catch (SqlException ex)
+            {
