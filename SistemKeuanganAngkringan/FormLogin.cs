@@ -74,3 +74,10 @@ namespace SistemKeuanganAngkringan
 
                 if (reader.Read())
                 {
+                    // Login berhasil
+                    IdAdmin = Convert.ToInt32(reader["id_admin"]);
+                    NamaAdmin = reader["nama_admin"].ToString();
+
+                    MessageBox.Show($"Login Berhasil! Selamat datang, {NamaAdmin}", "Sukses",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+
