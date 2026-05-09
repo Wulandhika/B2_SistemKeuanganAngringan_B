@@ -1,28 +1,50 @@
--- CREATE DATABASE
-CREATE DATABASE DBAngkringan;
+-- ============================================================
+-- DATABASE: DBshop
+-- SISTEM KEUANGAN ANGKringAN
+-- ============================================================
+
+-- Hapus database lama jika ada
+USE master;
 GO
 
-USE DBAngkringan;
+IF EXISTS (SELECT name FROM sys.databases WHERE name = N'DBshop')
+BEGIN
+    ALTER DATABASE DBshop SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE DBshop;
+END
 GO
 
--- ==================== TABEL 1: ADMIN ====================
+-- Buat database baru
+CREATE DATABASE DBshop;
+GO
+
+USE DBshop;
+GO
+
+-- ============================================================
+-- TABEL 1: ADMIN
+-- ============================================================
 CREATE TABLE admin (
     id_admin INT IDENTITY(1,1) PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(100) NOT NULL,
-    nama_admin VARCHAR(100) NOT NULL
+    username VARCHAR(10) NOT NULL UNIQUE,   -- 10 huruf (simpel)
+    password VARCHAR(10) NOT NULL,          -- 10 huruf (mudah diingat)
+    nama_admin VARCHAR(30) NOT NULL
 );
 GO
 
--- ==================== TABEL 2: MENU ====================
+-- ============================================================
+-- TABEL 2: MENU
+-- ============================================================
 CREATE TABLE menu (
     id_menu INT IDENTITY(1,1) PRIMARY KEY,
     nama_menu VARCHAR(100) NOT NULL,
-    harga INT NOT NULL CHECK (harga > 0)
+    harga INT NOT NULL CHECK (harga >= 1000)  -- minimal Rp 1.000
 );
 GO
 
--- ==================== TABEL 3: TRANSAKSI ====================
+-- ============================================================
+-- TABEL 3: TRANSAKSI
+-- ============================================================
 CREATE TABLE transaksi (
     id_transaksi INT IDENTITY(1,1) PRIMARY KEY,
     tanggal DATE NOT NULL DEFAULT GETDATE(),
@@ -32,7 +54,9 @@ CREATE TABLE transaksi (
 );
 GO
 
--- ==================== TABEL 4: DETAIL TRANSAKSI ====================
+-- ============================================================
+-- TABEL 4: DETAIL TRANSAKSI
+-- ============================================================
 CREATE TABLE detail_transaksi (
     id_detail INT IDENTITY(1,1) PRIMARY KEY,
     id_transaksi INT NOT NULL,
@@ -44,103 +68,48 @@ CREATE TABLE detail_transaksi (
 );
 GO
 
--- ==================== DATA SAMPLE ====================
--- Insert Admin
-INSERT INTO admin (username, password, nama_admin) VALUES 
-('admin', 'admin123', 'Pemilik Angkringan'),
-('kasir1', 'kasir123', 'Kasir Utama');
+-- ============================================================
+-- DATA SAMPLE
+-- ============================================================
 
--- Insert Menu Makanan & Minuman
+-- Insert Admin (username 10 huruf, password 10 huruf)
+INSERT INTO admin (username, password, nama_admin) VALUES 
+('admin', 'admin123', 'Pemilik Angkringan');
+GO
+
+-- Insert Menu (harga ribuan, nama produk wajar)
 INSERT INTO menu (nama_menu, harga) VALUES 
 ('Nasi Kucing', 5000),
+('Nasi Langgi', 8000),
 ('Sate Usus', 3000),
+('Sate Telur Puyuh', 4000),
 ('Teh Hangat', 2000),
+('Teh Es', 4000),
 ('Kopi Hitam', 3000),
+('Kopi Susu', 5000),
 ('Susu Jahe', 4000),
+('Jahe Hangat', 3000),
 ('Indomie Goreng', 7000),
 ('Indomie Rebus', 7000),
 ('Pisang Goreng', 5000),
 ('Tahu Isi', 3000),
-('Es Teh', 4000);
-
--- Insert Sample Transaksi
-INSERT INTO transaksi (tanggal, id_admin, total_harga) VALUES 
-('2026-04-12', 1, 25000),
-('2026-04-12', 1, 15000);
-
--- Insert Sample Detail Transaksi
-INSERT INTO detail_transaksi (id_transaksi, id_menu, jumlah, subtotal) VALUES 
-(1, 1, 2, 10000),
-(1, 2, 3, 9000),
-(1, 3, 3, 6000),
-(2, 4, 2, 6000),
-(2, 6, 1, 7000),
-(2, 5, 1, 4000);
-
--- Cek data
-SELECT * FROM admin;
-SELECT * FROM menu;
-SELECT * FROM transaksi;
-SELECT * FROM detail_transaksi;
+('Tempe Mendoan', 4000),
+('Es Jeruk', 5000),
+('Es Kelapa Muda', 8000),
+('Wedang Uwuh', 6000);
 GO
 
--- ==================== VIEW TOTAL PEMASUKAN HARIAN ====================
-CREATE VIEW vw_pemasukan_harian AS
-SELECT 
-    tanggal,
-    COUNT(*) as jumlah_transaksi,
-    SUM(total_harga) as total_pemasukan
-FROM transaksi
-GROUP BY tanggal;
+-- ============================================================
+-- CEK HASIL
+-- ============================================================
+SELECT '=== DATA ADMIN ===' as Keterangan;
+SELECT id_admin, username, password, nama_admin FROM admin;
 GO
 
--- ==================== STORED PROCEDURE ====================
--- SP untuk mencatat transaksi lengkap
-CREATE PROCEDURE sp_insert_transaksi
-    @tanggal DATE,
-    @id_admin INT,
-    @items NVARCHAR(MAX) -- format: id_menu:jumlah,id_menu:jumlah
-AS
-BEGIN
-    DECLARE @id_transaksi INT;
-    DECLARE @total_harga INT = 0;
-    
-    -- Insert ke transaksi dulu (total_harga 0 dulu)
-    INSERT INTO transaksi (tanggal, id_admin, total_harga) 
-    VALUES (@tanggal, @id_admin, 0);
-    
-    SET @id_transaksi = SCOPE_IDENTITY();
-    
-    -- Insert detail transaksi
-    -- (Sederhananya, lebih mudah via aplikasi)
-    
-    SELECT @id_transaksi as id_transaksi;
-END;
+SELECT '=== DATA MENU ===' as Keterangan;
+SELECT id_menu, nama_menu, harga FROM menu ORDER BY id_menu;
 GO
 
-
-USE DBAngkringan;
-GO
-
--- Insert transaksi sample
-INSERT INTO transaksi (tanggal, id_admin, total_harga) VALUES 
-('2026-04-12', 1, 25000),
-('2026-04-12', 1, 15000),
-('2026-04-11', 1, 30000);
-
--- Insert detail transaksi
-INSERT INTO detail_transaksi (id_transaksi, id_menu, jumlah, subtotal) VALUES 
-(1, 1, 2, 10000),
-(1, 2, 3, 9000),
-(1, 3, 2, 6000),
-(2, 4, 2, 6000),
-(2, 6, 1, 7000),
-(2, 5, 1, 4000),
-(3, 1, 3, 15000),
-(3, 4, 3, 9000),
-(3, 8, 2, 10000);
-
--- Cek data
-SELECT * FROM transaksi;
-SELECT * FROM detail_transaksi;
+SELECT '=== TOTAL MENU ===' as Keterangan;
+SELECT COUNT(*) as jumlah_menu FROM menu;
 GO
