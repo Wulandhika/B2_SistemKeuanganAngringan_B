@@ -117,3 +117,15 @@ namespace SistemKeuanganAngkringan
             }
         }
 
+        private void btnExit_Click(object sender, EventArgs e)
+        {
+            // Konfirmasi keluar aplikasi
+            DialogResult confirm = MessageBox.Show("Yakin ingin keluar dari aplikasi?", "Konfirmasi",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (confirm == DialogResult.Yes)
+            {
+                Application.Exit();
+            }
+        }
+
