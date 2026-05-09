@@ -105,3 +105,15 @@ namespace SistemKeuanganAngkringan
             }
             catch (SqlException ex)
             {
+                // Error khusus database
+                MessageBox.Show("Database Error: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                // Error umum
+                MessageBox.Show("Error: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
