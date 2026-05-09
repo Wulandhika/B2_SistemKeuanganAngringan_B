@@ -39,3 +39,29 @@ namespace SistemKeuanganAngkringan.Classes
             return conn.State == ConnectionState.Open;
         }
 
+        // Method untuk cek status koneksi (string)
+        public static string GetConnectionStatus(SqlConnection conn)
+        {
+            if (conn == null)
+                return "Tidak Ada Koneksi";
+
+            switch (conn.State)
+            {
+                case ConnectionState.Closed:
+                    return "Tertutup";
+                case ConnectionState.Open:
+                    return "Terbuka";
+                case ConnectionState.Connecting:
+                    return "Sedang Menghubungkan";
+                case ConnectionState.Executing:
+                    return "Sedang Menjalankan Query";
+                case ConnectionState.Fetching:
+                    return "Sedang Mengambil Data";
+                case ConnectionState.Broken:
+                    return "Koneksi Rusak";
+                default:
+                    return "Tidak Diketahui";
+            }
+        }
+    }
+}
