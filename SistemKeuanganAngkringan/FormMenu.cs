@@ -218,3 +218,4 @@ namespace SistemKeuanganAngkringan
 }
 
 //CEK MENU
+// 1. Insert menu dengan nama kosong -> Gagal (validasi nama menu harus diisi)
