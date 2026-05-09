@@ -95,3 +95,4 @@ namespace SistemKeuanganAngkringan
 }
 
 // FORM RIWAYAT: Menampilkan riwayat transaksi berdasarkan tanggal yang dipilih. Ketika pengguna mengklik sebuah transaksi, detail dari transaksi tersebut akan ditampilkan di DataGridView lain.
+// FORM RIWAYAT CS
