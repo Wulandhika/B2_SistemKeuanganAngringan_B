@@ -55,3 +55,4 @@ namespace SistemKeuanganAngkringan
 // FORM UTAMA
 // Menampilkan nama admin yang login
 // Menyediakan tombol untuk membuka form transaksi, riwayat, pemasukan, dan menu
+// Tombol logout untuk kembali ke form login
