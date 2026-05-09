@@ -81,3 +81,7 @@ namespace SistemKeuanganAngkringan
                     MessageBox.Show($"Login Berhasil! Selamat datang, {NamaAdmin}", "Sukses",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
 
+                    // Buka Form Utama
+                    FormUtama formUtama = new FormUtama();
+                    formUtama.Show();
+
