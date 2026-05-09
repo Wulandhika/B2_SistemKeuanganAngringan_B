@@ -63,3 +63,9 @@ namespace SistemKeuanganAngkringan
                 SqlConnection conn = DBHelper.GetConnection();
                 DBHelper.OpenConnection(conn);
 
+                // Query SELECT (username dan password sesuai dengan DBshop)
+                string query = "SELECT id_admin, nama_admin FROM admin WHERE username = @user AND password = @pass";
+                SqlCommand cmd = new SqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@user", txtUsername.Text.Trim());
+                cmd.Parameters.AddWithValue("@pass", txtPassword.Text.Trim());
+
