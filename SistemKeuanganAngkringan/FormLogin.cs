@@ -129,3 +129,12 @@ namespace SistemKeuanganAngkringan
             }
         }
 
+        private void FormLogin_Load(object sender, EventArgs e)
+        {
+            // Kosongkan form saat pertama kali load
+            txtUsername.Text = "";
+            txtPassword.Text = "";
+            txtUsername.Focus();
+        }
+    }
+}
