@@ -59,3 +59,7 @@ namespace SistemKeuanganAngkringan
                     return;
                 }
 
+                // ========== KONEKSI DATABASE ==========
+                SqlConnection conn = DBHelper.GetConnection();
+                DBHelper.OpenConnection(conn);
+
