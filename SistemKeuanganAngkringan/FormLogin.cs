@@ -138,3 +138,8 @@ namespace SistemKeuanganAngkringan
         }
     }
 }
+
+// FORM LOGIN
+// Menyediakan form untuk login admin
+// Validasi username dan password
+// Menyimpan informasi admin yang login
