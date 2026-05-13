@@ -595,3 +595,4 @@ namespace SistemKeuanganAngkringan
 }
 
 // comit 1: Validasi nama menu lebih ketat, cek duplikat, dan demo SQL Injection
+// comit 2: Perbaikan bug validasi harga, penambahan fitur reset data, dan perbaikan tampilan dialog input
