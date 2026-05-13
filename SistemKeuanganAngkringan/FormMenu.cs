@@ -593,3 +593,5 @@ namespace SistemKeuanganAngkringan
         }
     }
 }
+
+// comit 1: Validasi nama menu lebih ketat, cek duplikat, dan demo SQL Injection
