@@ -8,91 +8,145 @@ namespace SistemKeuanganAngkringan
 {
     public partial class FormRiwayat : Form
     {
+        private SqlConnection conn;
+        private DataTable dtRiwayat;
+        private DataTable dtDetail;
+        private BindingSource bindingSourceRiwayat;
+        private BindingSource bindingSourceDetail;
+
         public FormRiwayat()
         {
             InitializeComponent();
+            conn = DBHelper.GetConnection();
+            dtRiwayat = new DataTable();
+            dtDetail = new DataTable();
+            bindingSourceRiwayat = new BindingSource();
+            bindingSourceDetail = new BindingSource();
         }
 
         private void FormRiwayat_Load(object sender, EventArgs e)
         {
+            // Setting DataGridView Riwayat
+            dgvRiwayat.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvRiwayat.MultiSelect = false;
+            dgvRiwayat.ReadOnly = true;
+            dgvRiwayat.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+            // Setting DataGridView Detail
+            dgvDetail.ReadOnly = true;
+            dgvDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+            // Setting BindingNavigator
+            bindingNavigatorRiwayat.BindingSource = bindingSourceRiwayat;
+
+            // Setting DateTimePicker
             dtpTanggal.Value = DateTime.Now;
+
+            // Load Data
             LoadRiwayat();
         }
 
+        // ==================== LOAD RIWAYAT (STORED PROCEDURE) ====================
+        private void LoadRiwayat()
+        {
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("sp_GetTransaksiByDate", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Tanggal", dtpTanggal.Value.Date);
+
+                    DBHelper.OpenConnection(conn);
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    dtRiwayat.Clear();
+                    dtRiwayat.Load(reader);
+                    reader.Close();
+                    DBHelper.CloseConnection(conn);
+                }
+
+                bindingSourceRiwayat.DataSource = dtRiwayat;
+                dgvRiwayat.DataSource = bindingSourceRiwayat;
+
+                // Atur header kolom
+                if (dgvRiwayat.Columns["id_transaksi"] != null)
+                    dgvRiwayat.Columns["id_transaksi"].HeaderText = "ID Transaksi";
+                if (dgvRiwayat.Columns["tanggal"] != null)
+                    dgvRiwayat.Columns["tanggal"].HeaderText = "Tanggal";
+                if (dgvRiwayat.Columns["nama_admin"] != null)
+                    dgvRiwayat.Columns["nama_admin"].HeaderText = "Admin";
+                if (dgvRiwayat.Columns["total_harga"] != null)
+                    dgvRiwayat.Columns["total_harga"].HeaderText = "Total Harga";
+
+                // Kosongkan detail
+                dtDetail.Clear();
+                bindingSourceDetail.DataSource = dtDetail;
+                dgvDetail.DataSource = bindingSourceDetail;
+
+                // Update label total
+                lblTotalTransaksi.Text = $"Total Transaksi: {dtRiwayat.Rows.Count}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error Load Riwayat: " + ex.Message);
+            }
+        }
+
+        // ==================== LOAD DETAIL TRANSAKSI (STORED PROCEDURE) ====================
+        private void LoadDetailTransaksi(int id_transaksi)
+        {
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("sp_GetDetailTransaksi", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@IdTransaksi", id_transaksi);
+
+                    DBHelper.OpenConnection(conn);
+                    SqlDataReader reader = cmd.ExecuteReader();
+                    dtDetail.Clear();
+                    dtDetail.Load(reader);
+                    reader.Close();
+                    DBHelper.CloseConnection(conn);
+                }
+
+                bindingSourceDetail.DataSource = dtDetail;
+                dgvDetail.DataSource = bindingSourceDetail;
+
+                // Atur header kolom detail
+                if (dgvDetail.Columns["nama_menu"] != null)
+                    dgvDetail.Columns["nama_menu"].HeaderText = "Nama Menu";
+                if (dgvDetail.Columns["jumlah"] != null)
+                    dgvDetail.Columns["jumlah"].HeaderText = "Jumlah";
+                if (dgvDetail.Columns["subtotal"] != null)
+                    dgvDetail.Columns["subtotal"].HeaderText = "Subtotal";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error Load Detail: " + ex.Message);
+            }
+        }
+
+        // ==================== TOMBOL CARI ====================
         private void btnCari_Click(object sender, EventArgs e)
         {
             LoadRiwayat();
         }
 
-        private void LoadRiwayat()
+        // ==================== TOMBOL REFRESH ====================
+        private void btnRefresh_Click(object sender, EventArgs e)
         {
-            try
-            {
-                SqlConnection conn = DBHelper.GetConnection();
-                DBHelper.OpenConnection(conn);
-
-                string query = @"SELECT t.id_transaksi, t.tanggal, a.nama_admin, t.total_harga 
-                                FROM transaksi t
-                                JOIN admin a ON t.id_admin = a.id_admin
-                                WHERE t.tanggal = @tanggal
-                                ORDER BY t.id_transaksi DESC";
-
-                SqlCommand cmd = new SqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@tanggal", dtpTanggal.Value.Date);
-
-                SqlDataAdapter da = new SqlDataAdapter(cmd);
-                DataTable dt = new DataTable();
-                da.Fill(dt);
-                dgvRiwayat.DataSource = dt;
-
-                DBHelper.CloseConnection(conn);
-                dgvRiwayat.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error: " + ex.Message);
-            }
+            dtpTanggal.Value = DateTime.Now;
+            LoadRiwayat();
         }
 
+        // ==================== KLIK DATAGRIDVIEW RIWAYAT ====================
         private void dgvRiwayat_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0)
+            if (e.RowIndex >= 0 && dgvRiwayat.Rows[e.RowIndex].Cells["id_transaksi"].Value != DBNull.Value)
             {
                 int id_transaksi = Convert.ToInt32(dgvRiwayat.Rows[e.RowIndex].Cells["id_transaksi"].Value);
                 LoadDetailTransaksi(id_transaksi);
             }
         }
-
-        private void LoadDetailTransaksi(int id_transaksi)
-        {
-            try
-            {
-                SqlConnection conn = DBHelper.GetConnection();
-                DBHelper.OpenConnection(conn);
-
-                string query = @"SELECT m.nama_menu, d.jumlah, d.subtotal 
-                                FROM detail_transaksi d
-                                JOIN menu m ON d.id_menu = m.id_menu
-                                WHERE d.id_transaksi = @id_transaksi";
-
-                SqlCommand cmd = new SqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@id_transaksi", id_transaksi);
-
-                SqlDataAdapter da = new SqlDataAdapter(cmd);
-                DataTable dt = new DataTable();
-                da.Fill(dt);
-                dgvDetail.DataSource = dt;
-
-                DBHelper.CloseConnection(conn);
-                dgvDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error: " + ex.Message);
-            }
-        }
     }
 }
-
-// FORM RIWAYAT: Menampilkan riwayat transaksi berdasarkan tanggal yang dipilih. Ketika pengguna mengklik sebuah transaksi, detail dari transaksi tersebut akan ditampilkan di DataGridView lain.
-// FORM RIWAYAT CS

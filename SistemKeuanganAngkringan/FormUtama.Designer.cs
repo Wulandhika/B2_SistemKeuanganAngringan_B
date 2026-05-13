@@ -27,15 +27,15 @@
             // 
             this.lblAdmin.AutoSize = true;
             this.lblAdmin.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold);
-            this.lblAdmin.Location = new System.Drawing.Point(50, 30);
+            this.lblAdmin.Location = new System.Drawing.Point(50, 20);
             this.lblAdmin.Name = "lblAdmin";
-            this.lblAdmin.Size = new System.Drawing.Size(150, 20);
+            this.lblAdmin.Size = new System.Drawing.Size(144, 20);
             this.lblAdmin.TabIndex = 0;
             this.lblAdmin.Text = "Selamat Datang,";
             // 
             // btnTransaksi
             // 
-            this.btnTransaksi.Location = new System.Drawing.Point(50, 80);
+            this.btnTransaksi.Location = new System.Drawing.Point(50, 60);
             this.btnTransaksi.Name = "btnTransaksi";
             this.btnTransaksi.Size = new System.Drawing.Size(200, 40);
             this.btnTransaksi.TabIndex = 1;
@@ -45,7 +45,7 @@
             // 
             // btnRiwayat
             // 
-            this.btnRiwayat.Location = new System.Drawing.Point(50, 130);
+            this.btnRiwayat.Location = new System.Drawing.Point(50, 110);
             this.btnRiwayat.Name = "btnRiwayat";
             this.btnRiwayat.Size = new System.Drawing.Size(200, 40);
             this.btnRiwayat.TabIndex = 2;
@@ -55,7 +55,7 @@
             // 
             // btnPemasukan
             // 
-            this.btnPemasukan.Location = new System.Drawing.Point(50, 180);
+            this.btnPemasukan.Location = new System.Drawing.Point(50, 160);
             this.btnPemasukan.Name = "btnPemasukan";
             this.btnPemasukan.Size = new System.Drawing.Size(200, 40);
             this.btnPemasukan.TabIndex = 3;
@@ -65,29 +65,31 @@
             // 
             // btnMenu
             // 
-            this.btnMenu.Location = new System.Drawing.Point(50, 230);
+            this.btnMenu.BackColor = System.Drawing.Color.LightSteelBlue;
+            this.btnMenu.Location = new System.Drawing.Point(50, 210);
             this.btnMenu.Name = "btnMenu";
             this.btnMenu.Size = new System.Drawing.Size(200, 40);
             this.btnMenu.TabIndex = 4;
             this.btnMenu.Text = "Kelola Menu";
-            this.btnMenu.UseVisualStyleBackColor = true;
+            this.btnMenu.UseVisualStyleBackColor = false;
             this.btnMenu.Click += new System.EventHandler(this.btnMenu_Click);
             // 
             // btnLogout
             // 
-            this.btnLogout.Location = new System.Drawing.Point(50, 290);
+            this.btnLogout.BackColor = System.Drawing.Color.LightCoral;
+            this.btnLogout.Location = new System.Drawing.Point(50, 270);
             this.btnLogout.Name = "btnLogout";
             this.btnLogout.Size = new System.Drawing.Size(200, 40);
             this.btnLogout.TabIndex = 5;
             this.btnLogout.Text = "Logout";
-            this.btnLogout.UseVisualStyleBackColor = true;
+            this.btnLogout.UseVisualStyleBackColor = false;
             this.btnLogout.Click += new System.EventHandler(this.btnLogout_Click);
             // 
             // FormUtama
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(350, 380);
+            this.ClientSize = new System.Drawing.Size(350, 350);
             this.Controls.Add(this.btnLogout);
             this.Controls.Add(this.btnMenu);
             this.Controls.Add(this.btnPemasukan);
@@ -110,5 +112,3 @@
         private System.Windows.Forms.Button btnLogout;
     }
 }
-
-// FORM DESIGNER UNTUK FORM UTAMA - MENU UTAMA APLIKASI SISTEM KEUANGAN ANGRINGAN
