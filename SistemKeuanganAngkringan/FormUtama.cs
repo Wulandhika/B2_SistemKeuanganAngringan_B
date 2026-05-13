@@ -57,3 +57,4 @@ namespace SistemKeuanganAngkringan
         }
     }
 }
+// Catatan: Pastikan untuk menambahkan referensi ke FormTransaksi, FormRiwayat, FormPemasukan, dan FormMenu sesuai dengan struktur proyek Anda.
