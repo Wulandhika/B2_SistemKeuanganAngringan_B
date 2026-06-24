@@ -12,14 +12,12 @@ namespace SistemKeuanganAngkringan
         private DataTable cartTable;
         private int total = 0;
         private DataTable dtMenu;
-        private BindingSource bindingSourceMenu;
 
         public FormTransaksi()
         {
             InitializeComponent();
             conn = DBHelper.GetConnection();
             dtMenu = new DataTable();
-            bindingSourceMenu = new BindingSource();
             cartTable = new DataTable();
             cartTable.Columns.Add("id_menu");
             cartTable.Columns.Add("nama_menu");
@@ -35,9 +33,6 @@ namespace SistemKeuanganAngkringan
             dgvMenu.MultiSelect = false;
             dgvMenu.ReadOnly = true;
             dgvMenu.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-
-            // Setting BindingNavigator untuk Menu
-            bindingNavigatorMenu.BindingSource = bindingSourceMenu;
 
             // Setting NumericUpDown
             nudJumlah.Minimum = 1;
@@ -57,8 +52,9 @@ namespace SistemKeuanganAngkringan
                 SqlDataAdapter da = new SqlDataAdapter(query, conn);
                 dtMenu.Clear();
                 da.Fill(dtMenu);
-                bindingSourceMenu.DataSource = dtMenu;
-                dgvMenu.DataSource = bindingSourceMenu;
+
+                // ✅ LANGSUNG ke DataGridView (tanpa BindingSource)
+                dgvMenu.DataSource = dtMenu;
 
                 if (dgvMenu.Columns["NamaMenu"] != null)
                     dgvMenu.Columns["NamaMenu"].HeaderText = "Nama Menu";
@@ -69,7 +65,8 @@ namespace SistemKeuanganAngkringan
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error Load Menu: " + ex.Message);
+                MessageBox.Show("Error Load Menu: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -95,13 +92,15 @@ namespace SistemKeuanganAngkringan
         {
             if (dgvMenu.CurrentRow == null)
             {
-                MessageBox.Show("Pilih menu terlebih dahulu!");
+                MessageBox.Show("Pilih menu terlebih dahulu!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             if (nudJumlah.Value <= 0)
             {
-                MessageBox.Show("Jumlah harus lebih dari 0!");
+                MessageBox.Show("Jumlah harus lebih dari 0!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -114,7 +113,8 @@ namespace SistemKeuanganAngkringan
 
             if (id_menu == 0)
             {
-                MessageBox.Show("Menu tidak ditemukan di database!");
+                MessageBox.Show("Menu tidak ditemukan di database!", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -172,7 +172,8 @@ namespace SistemKeuanganAngkringan
         {
             if (lbCart.SelectedIndex == -1)
             {
-                MessageBox.Show("Pilih item yang akan dihapus dari keranjang!");
+                MessageBox.Show("Pilih item yang akan dihapus dari keranjang!", "Peringatan",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -196,7 +197,8 @@ namespace SistemKeuanganAngkringan
         {
             if (cartTable.Rows.Count == 0)
             {
-                MessageBox.Show("Tidak ada item dalam transaksi!");
+                MessageBox.Show("Tidak ada item dalam transaksi!\n\nSilahkan tambahkan menu terlebih dahulu.",
+                    "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -244,7 +246,7 @@ namespace SistemKeuanganAngkringan
 
                     transaction.Commit();
 
-                    MessageBox.Show($"Transaksi berhasil disimpan!\nID Transaksi: {id_transaksi}\nTotal: Rp {total:N0}",
+                    MessageBox.Show($"✅ Transaksi berhasil disimpan!\n\nID Transaksi: {id_transaksi}\nTotal: Rp {total:N0}",
                         "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                     ResetTransaksi();
@@ -252,7 +254,8 @@ namespace SistemKeuanganAngkringan
                 catch (Exception ex)
                 {
                     transaction.Rollback();
-                    MessageBox.Show("Error: " + ex.Message);
+                    MessageBox.Show("Error: " + ex.Message, "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 finally
                 {
@@ -261,7 +264,8 @@ namespace SistemKeuanganAngkringan
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error: " + ex.Message);
+                MessageBox.Show("Error: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -278,7 +282,7 @@ namespace SistemKeuanganAngkringan
         {
             if (cartTable.Rows.Count > 0)
             {
-                DialogResult confirm = MessageBox.Show("Yakin ingin membatalkan transaksi?",
+                DialogResult confirm = MessageBox.Show("Yakin ingin membatalkan transaksi?\n\nSemua item akan dihapus dari keranjang.",
                     "Konfirmasi Batal", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (confirm == DialogResult.Yes)
                 {

@@ -55,6 +55,32 @@ namespace SistemKeuanganAngkringan
                 this.Close();
             }
         }
+
+        // ============================================================
+        // TOMBOL LAPORAN TRANSAKSI (SUDAH JADI)
+        // ============================================================
+        private void btnLaporanTransaksi_Click(object sender, EventArgs e)
+        {
+            FormRekapTransaksi form = new FormRekapTransaksi();
+            form.ShowDialog();
+        }
+
+        private void btnDashboard_Click(object sender, EventArgs e)
+        {
+            FormDashboard form = new FormDashboard();
+            form.ShowDialog();
+        }
+
+        // ============================================================
+        // TOMBOL LAPORAN PEMASUKAN (SEMENTARA DIKOMENTARI)
+        // Nanti di-uncomment kalau FormRekapPemasukan sudah dibuat
+        // ============================================================
+        /*
+        private void btnLaporanPemasukan_Click(object sender, EventArgs e)
+        {
+            FormRekapPemasukan form = new FormRekapPemasukan();
+            form.ShowDialog();
+        }
+        */
     }
 }
-// Catatan: Pastikan untuk menambahkan referensi ke FormTransaksi, FormRiwayat, FormPemasukan, dan FormMenu sesuai dengan struktur proyek Anda.

@@ -21,6 +21,8 @@
             this.btnPemasukan = new System.Windows.Forms.Button();
             this.btnMenu = new System.Windows.Forms.Button();
             this.btnLogout = new System.Windows.Forms.Button();
+            this.btnLaporanTransaksi = new System.Windows.Forms.Button();
+            this.btnDashboard = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lblAdmin
@@ -35,9 +37,9 @@
             // 
             // btnTransaksi
             // 
-            this.btnTransaksi.Location = new System.Drawing.Point(50, 60);
+            this.btnTransaksi.Location = new System.Drawing.Point(50, 50);
             this.btnTransaksi.Name = "btnTransaksi";
-            this.btnTransaksi.Size = new System.Drawing.Size(200, 40);
+            this.btnTransaksi.Size = new System.Drawing.Size(200, 27);
             this.btnTransaksi.TabIndex = 1;
             this.btnTransaksi.Text = "Pencatatan Transaksi";
             this.btnTransaksi.UseVisualStyleBackColor = true;
@@ -45,9 +47,9 @@
             // 
             // btnRiwayat
             // 
-            this.btnRiwayat.Location = new System.Drawing.Point(50, 110);
+            this.btnRiwayat.Location = new System.Drawing.Point(50, 78);
             this.btnRiwayat.Name = "btnRiwayat";
-            this.btnRiwayat.Size = new System.Drawing.Size(200, 40);
+            this.btnRiwayat.Size = new System.Drawing.Size(200, 27);
             this.btnRiwayat.TabIndex = 2;
             this.btnRiwayat.Text = "Riwayat Transaksi";
             this.btnRiwayat.UseVisualStyleBackColor = true;
@@ -55,9 +57,9 @@
             // 
             // btnPemasukan
             // 
-            this.btnPemasukan.Location = new System.Drawing.Point(50, 160);
+            this.btnPemasukan.Location = new System.Drawing.Point(50, 107);
             this.btnPemasukan.Name = "btnPemasukan";
-            this.btnPemasukan.Size = new System.Drawing.Size(200, 40);
+            this.btnPemasukan.Size = new System.Drawing.Size(200, 29);
             this.btnPemasukan.TabIndex = 3;
             this.btnPemasukan.Text = "Total Pemasukan Harian";
             this.btnPemasukan.UseVisualStyleBackColor = true;
@@ -66,9 +68,9 @@
             // btnMenu
             // 
             this.btnMenu.BackColor = System.Drawing.Color.LightSteelBlue;
-            this.btnMenu.Location = new System.Drawing.Point(50, 210);
+            this.btnMenu.Location = new System.Drawing.Point(50, 136);
             this.btnMenu.Name = "btnMenu";
-            this.btnMenu.Size = new System.Drawing.Size(200, 40);
+            this.btnMenu.Size = new System.Drawing.Size(200, 29);
             this.btnMenu.TabIndex = 4;
             this.btnMenu.Text = "Kelola Menu";
             this.btnMenu.UseVisualStyleBackColor = false;
@@ -77,7 +79,7 @@
             // btnLogout
             // 
             this.btnLogout.BackColor = System.Drawing.Color.LightCoral;
-            this.btnLogout.Location = new System.Drawing.Point(50, 270);
+            this.btnLogout.Location = new System.Drawing.Point(50, 230);
             this.btnLogout.Name = "btnLogout";
             this.btnLogout.Size = new System.Drawing.Size(200, 40);
             this.btnLogout.TabIndex = 5;
@@ -85,11 +87,33 @@
             this.btnLogout.UseVisualStyleBackColor = false;
             this.btnLogout.Click += new System.EventHandler(this.btnLogout_Click);
             // 
+            // btnLaporanTransaksi
+            // 
+            this.btnLaporanTransaksi.Location = new System.Drawing.Point(50, 200);
+            this.btnLaporanTransaksi.Name = "btnLaporanTransaksi";
+            this.btnLaporanTransaksi.Size = new System.Drawing.Size(200, 27);
+            this.btnLaporanTransaksi.TabIndex = 6;
+            this.btnLaporanTransaksi.Text = "Laporan Transaksi";
+            this.btnLaporanTransaksi.UseVisualStyleBackColor = true;
+            this.btnLaporanTransaksi.Click += new System.EventHandler(this.btnLaporanTransaksi_Click);
+            // 
+            // btnDashboard
+            // 
+            this.btnDashboard.Location = new System.Drawing.Point(54, 172);
+            this.btnDashboard.Name = "btnDashboard";
+            this.btnDashboard.Size = new System.Drawing.Size(196, 23);
+            this.btnDashboard.TabIndex = 7;
+            this.btnDashboard.Text = "Dashboard";
+            this.btnDashboard.UseVisualStyleBackColor = true;
+            this.btnDashboard.Click += new System.EventHandler(this.btnDashboard_Click);
+            // 
             // FormUtama
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(350, 350);
+            this.ClientSize = new System.Drawing.Size(310, 300);
+            this.Controls.Add(this.btnDashboard);
+            this.Controls.Add(this.btnLaporanTransaksi);
             this.Controls.Add(this.btnLogout);
             this.Controls.Add(this.btnMenu);
             this.Controls.Add(this.btnPemasukan);
@@ -102,6 +126,7 @@
             this.Load += new System.EventHandler(this.FormUtama_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
+
         }
 
         private System.Windows.Forms.Label lblAdmin;
@@ -110,5 +135,7 @@
         private System.Windows.Forms.Button btnPemasukan;
         private System.Windows.Forms.Button btnMenu;
         private System.Windows.Forms.Button btnLogout;
+        private System.Windows.Forms.Button btnLaporanTransaksi;
+        private System.Windows.Forms.Button btnDashboard;
     }
 }

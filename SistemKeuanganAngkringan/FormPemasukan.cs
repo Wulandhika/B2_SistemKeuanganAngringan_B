@@ -10,14 +10,12 @@ namespace SistemKeuanganAngkringan
     {
         private SqlConnection conn;
         private DataTable dtPemasukan;
-        private BindingSource bindingSource;
 
         public FormPemasukan()
         {
             InitializeComponent();
             conn = DBHelper.GetConnection();
             dtPemasukan = new DataTable();
-            bindingSource = new BindingSource();
         }
 
         private void FormPemasukan_Load(object sender, EventArgs e)
@@ -28,9 +26,6 @@ namespace SistemKeuanganAngkringan
             dgvPemasukan.ReadOnly = true;
             dgvPemasukan.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-            // Setting BindingNavigator
-            bindingNavigatorPemasukan.BindingSource = bindingSource;
-
             // Setting DateTimePicker
             dtpTanggal.Value = DateTime.Now;
 
@@ -38,12 +33,12 @@ namespace SistemKeuanganAngkringan
             LoadPemasukan();
         }
 
-        // ==================== LOAD PEMASUKAN (STORED PROCEDURE) ====================
+        // ==================== LOAD PEMASUKAN ====================
         private void LoadPemasukan()
         {
             try
             {
-                // ===== 1. Ambil data ringkasan (Total Transaksi & Total Pemasukan) =====
+                // ===== 1. Ambil data ringkasan =====
                 using (SqlCommand cmd = new SqlCommand("sp_GetPemasukanByDate", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -68,7 +63,7 @@ namespace SistemKeuanganAngkringan
                     DBHelper.CloseConnection(conn);
                 }
 
-                // ===== 2. Ambil data detail transaksi untuk DataGridView =====
+                // ===== 2. Ambil data detail transaksi =====
                 using (SqlCommand cmd = new SqlCommand("sp_GetTransaksiByDateForPemasukan", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -82,8 +77,8 @@ namespace SistemKeuanganAngkringan
                     DBHelper.CloseConnection(conn);
                 }
 
-                bindingSource.DataSource = dtPemasukan;
-                dgvPemasukan.DataSource = bindingSource;
+                // ✅ LANGSUNG ke DataGridView (tanpa BindingSource)
+                dgvPemasukan.DataSource = dtPemasukan;
 
                 // Atur header kolom
                 if (dgvPemasukan.Columns["id_transaksi"] != null)
@@ -99,7 +94,8 @@ namespace SistemKeuanganAngkringan
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error Load Pemasukan: " + ex.Message);
+                MessageBox.Show("Error Load Pemasukan: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

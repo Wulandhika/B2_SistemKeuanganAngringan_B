@@ -11,12 +11,37 @@ namespace SistemKeuanganAngkringan
     {
         private SqlConnection conn;
         private DataTable dtMenu;
+        private int currentPosition = 0;
+        private int totalRecords = 0;
 
         public FormMenu()
         {
             InitializeComponent();
             conn = DBHelper.GetConnection();
             dtMenu = new DataTable();
+        }
+
+        // ==================== LOGGING ERROR ====================
+        private void SimpanLog(string pesan)
+        {
+            try
+            {
+                using (SqlConnection logConn = DBHelper.GetConnection())
+                {
+                    string query = @"INSERT INTO LogError (waktu, pesan_error) VALUES (GETDATE(), @pesan)";
+                    using (SqlCommand cmd = new SqlCommand(query, logConn))
+                    {
+                        cmd.Parameters.AddWithValue("@pesan", pesan);
+                        DBHelper.OpenConnection(logConn);
+                        cmd.ExecuteNonQuery();
+                        DBHelper.CloseConnection(logConn);
+                    }
+                }
+            }
+            catch
+            {
+                // Abaikan error logging
+            }
         }
 
         private void FormMenu_Load(object sender, EventArgs e)
@@ -26,41 +51,268 @@ namespace SistemKeuanganAngkringan
             dgvMenu.ReadOnly = true;
             dgvMenu.AllowUserToAddRows = false;
             dgvMenu.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-
             dgvMenu.DataError += (s, ev) => { };
 
-            nudHarga.Minimum = 1000;
-            nudHarga.Maximum = 10000000;
-            nudHarga.Increment = 500;
-            nudHarga.Value = 1000;
-            nudHarga.ThousandsSeparator = true;
+            bindingNavigator1.BindingSource = null;
 
-            if (bindingNavigator1 != null)
-                bindingNavigator1.BindingSource = bindingSource;
+            bindingNavigatorMoveFirstItem.Click += (s, ev) => NavigateFirst();
+            bindingNavigatorMovePreviousItem.Click += (s, ev) => NavigatePrevious();
+            bindingNavigatorMoveNextItem.Click += (s, ev) => NavigateNext();
+            bindingNavigatorMoveLastItem.Click += (s, ev) => NavigateLast();
+            bindingNavigatorAddNewItem.Click += (s, ev) => ClearInput();
+            bindingNavigatorDeleteItem.Click += (s, ev) => btnDelete_Click(s, ev);
+
+            nudHarga.Minimum = 0;
+            nudHarga.Maximum = 999999999;
+            nudHarga.Increment = 500;
+            nudHarga.ThousandsSeparator = true;
+            nudHarga.Value = 1000;
+
+            nudHarga.Validating += NudHarga_Validating;
+            nudHarga.ValueChanged += NudHarga_ValueChanged;
+            nudHarga.KeyDown += NudHarga_KeyDown;
 
             LoadData();
-            BindControls();
+            UpdateNavigatorUI();
             HitungTotalMenu();
+        }
+
+        private void NavigateFirst()
+        {
+            if (dtMenu.Rows.Count > 0)
+            {
+                currentPosition = 0;
+                DisplayCurrentRow();
+                UpdateNavigatorUI();
+            }
+        }
+
+        private void NavigatePrevious()
+        {
+            if (currentPosition > 0 && dtMenu.Rows.Count > 0)
+            {
+                currentPosition--;
+                DisplayCurrentRow();
+                UpdateNavigatorUI();
+            }
+        }
+
+        private void NavigateNext()
+        {
+            if (currentPosition < dtMenu.Rows.Count - 1)
+            {
+                currentPosition++;
+                DisplayCurrentRow();
+                UpdateNavigatorUI();
+            }
+        }
+
+        private void NavigateLast()
+        {
+            if (dtMenu.Rows.Count > 0)
+            {
+                currentPosition = dtMenu.Rows.Count - 1;
+                DisplayCurrentRow();
+                UpdateNavigatorUI();
+            }
+        }
+
+        private void ClearInput()
+        {
+            txtNamaMenu.Text = "";
+            nudHarga.Value = 1000;
+            txtNamaMenu.Focus();
+        }
+
+        private void DisplayCurrentRow()
+        {
+            if (dtMenu.Rows.Count > 0 && currentPosition >= 0 && currentPosition < dtMenu.Rows.Count)
+            {
+                DataRow row = dtMenu.Rows[currentPosition];
+                txtNamaMenu.Text = row["nama_menu"].ToString();
+                int harga = Convert.ToInt32(row["harga"]);
+                if (harga < 0) harga = 0;
+                nudHarga.Value = harga;
+
+                dgvMenu.ClearSelection();
+                if (currentPosition < dgvMenu.Rows.Count)
+                {
+                    dgvMenu.Rows[currentPosition].Selected = true;
+                    dgvMenu.FirstDisplayedScrollingRowIndex = currentPosition;
+                }
+            }
+        }
+
+        private void UpdateNavigatorUI()
+        {
+            bindingNavigatorPositionItem.Text = (currentPosition + 1).ToString();
+            bindingNavigatorCountItem.Text = $"of {totalRecords}";
+
+            bindingNavigatorMoveFirstItem.Enabled = currentPosition > 0;
+            bindingNavigatorMovePreviousItem.Enabled = currentPosition > 0;
+            bindingNavigatorMoveNextItem.Enabled = currentPosition < totalRecords - 1;
+            bindingNavigatorMoveLastItem.Enabled = currentPosition < totalRecords - 1;
+        }
+
+        private void NudHarga_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.OemMinus || e.KeyCode == Keys.Subtract)
+            {
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+                MessageBox.Show("❌ Harga tidak boleh negatif!", "Validasi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                nudHarga.Value = 1000;
+                nudHarga.Refresh();
+                nudHarga.Update();
+            }
+        }
+
+        private void NudHarga_Validating(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            NumericUpDown nud = sender as NumericUpDown;
+
+            if (nud.Value < 0)
+            {
+                MessageBox.Show($"❌ Harga tidak boleh negatif!\n\nHarga yang Anda masukkan (Rp {nud.Value:N0}) tidak valid.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                nud.Value = 1000;
+                nud.BackColor = System.Drawing.Color.White;
+                nud.ForeColor = System.Drawing.Color.Black;
+                toolTip1.SetToolTip(nud, "");
+                nud.Refresh();
+                nud.Update();
+                return;
+            }
+
+            if (nud.Value == 0)
+            {
+                MessageBox.Show($"❌ Harga Rp 0 tidak diperbolehkan!\n\nHarga minimal untuk menu adalah Rp 1.000.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                nud.Value = 1000;
+                nud.BackColor = System.Drawing.Color.White;
+                nud.ForeColor = System.Drawing.Color.Black;
+                toolTip1.SetToolTip(nud, "");
+                nud.Refresh();
+                nud.Update();
+                return;
+            }
+
+            if (nud.Value > 0 && nud.Value < 1000)
+            {
+                MessageBox.Show($"❌ Harga minimal Rp 1.000!\n\nHarga yang Anda masukkan (Rp {nud.Value:N0}) terlalu rendah.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                nud.Value = 1000;
+                nud.BackColor = System.Drawing.Color.White;
+                nud.ForeColor = System.Drawing.Color.Black;
+                toolTip1.SetToolTip(nud, "");
+                nud.Refresh();
+                nud.Update();
+                return;
+            }
+
+            if (nud.Value > 20000)
+            {
+                MessageBox.Show($"❌ Harga maksimal Rp 20.000!\n\nHarga yang Anda masukkan (Rp {nud.Value:N0}) terlalu tinggi.\nMenu angkringan maksimal Rp 20.000.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                nud.Value = 20000;
+                nud.BackColor = System.Drawing.Color.White;
+                nud.ForeColor = System.Drawing.Color.Black;
+                toolTip1.SetToolTip(nud, "");
+                nud.Refresh();
+                nud.Update();
+                return;
+            }
+
+            nud.BackColor = System.Drawing.Color.White;
+            nud.ForeColor = System.Drawing.Color.Black;
+            toolTip1.SetToolTip(nud, "");
+            nud.Refresh();
+            nud.Update();
+        }
+
+        private void NudHarga_ValueChanged(object sender, EventArgs e)
+        {
+            NumericUpDown nud = sender as NumericUpDown;
+
+            if (nud.Value < 0)
+            {
+                nud.BackColor = System.Drawing.Color.Red;
+                nud.ForeColor = System.Drawing.Color.White;
+                toolTip1.SetToolTip(nud, "🚫 Harga tidak boleh negatif!");
+                return;
+            }
+
+            if (nud.Value == 0)
+            {
+                nud.BackColor = System.Drawing.Color.LightPink;
+                nud.ForeColor = System.Drawing.Color.Red;
+                toolTip1.SetToolTip(nud, "⚠️ Harga minimal Rp 1.000");
+                return;
+            }
+
+            if (nud.Value > 0 && nud.Value < 1000)
+            {
+                nud.BackColor = System.Drawing.Color.LightPink;
+                nud.ForeColor = System.Drawing.Color.Red;
+                toolTip1.SetToolTip(nud, "⚠️ Harga minimal Rp 1.000");
+                return;
+            }
+
+            if (nud.Value > 20000)
+            {
+                nud.BackColor = System.Drawing.Color.LightPink;
+                nud.ForeColor = System.Drawing.Color.Red;
+                toolTip1.SetToolTip(nud, "⚠️ Harga maksimal Rp 20.000");
+                return;
+            }
+
+            nud.BackColor = System.Drawing.Color.White;
+            nud.ForeColor = System.Drawing.Color.Black;
+            toolTip1.SetToolTip(nud, "");
         }
 
         private void LoadData()
         {
             try
             {
-                string query = "SELECT id_menu, nama_menu, harga FROM menu ORDER BY nama_menu";
-                SqlDataAdapter adapter = new SqlDataAdapter(query, conn);
-
                 dtMenu.Clear();
-                adapter.Fill(dtMenu);
 
-                bindingSource.DataSource = dtMenu;
-                dgvMenu.DataSource = bindingSource;
+                using (SqlCommand cmd = new SqlCommand("sp_GetAllMenu", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
 
+                    DBHelper.OpenConnection(conn);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        dtMenu.Load(reader);
+                    }
+                    DBHelper.CloseConnection(conn);
+                }
+
+                dgvMenu.DataSource = dtMenu;
+
+                totalRecords = dtMenu.Rows.Count;
+                if (totalRecords > 0)
+                {
+                    currentPosition = 0;
+                    DisplayCurrentRow();
+                }
+                else
+                {
+                    txtNamaMenu.Text = "";
+                    nudHarga.Value = 1000;
+                }
+
+                UpdateNavigatorUI();
                 HitungTotalMenu();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal load data: " + ex.Message);
+                SimpanLog(ex.Message);
+                MessageBox.Show("Gagal load data: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -68,8 +320,10 @@ namespace SistemKeuanganAngkringan
         {
             try
             {
-                using (SqlCommand cmd = new SqlCommand("SELECT COUNT(*) FROM menu", conn))
+                using (SqlCommand cmd = new SqlCommand("sp_CountMenu", conn))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
                     DBHelper.OpenConnection(conn);
                     int total = Convert.ToInt32(cmd.ExecuteScalar());
                     DBHelper.CloseConnection(conn);
@@ -82,116 +336,143 @@ namespace SistemKeuanganAngkringan
             }
         }
 
-        private void BindControls()
-        {
-            txtNamaMenu.DataBindings.Clear();
-            nudHarga.DataBindings.Clear();
-
-            txtNamaMenu.DataBindings.Add("Text", bindingSource, "nama_menu");
-
-            Binding hargaBinding = new Binding("Value", bindingSource, "harga", true, DataSourceUpdateMode.OnPropertyChanged);
-            hargaBinding.Format += (s, ev) =>
-            {
-                if (ev.Value == DBNull.Value || ev.Value == null)
-                {
-                    ev.Value = 1000m;
-                    return;
-                }
-                try
-                {
-                    decimal v = Convert.ToDecimal(ev.Value);
-                    if (v < 1000) v = 1000;
-                    if (v > 10000000) v = 10000000;
-                    ev.Value = v;
-                }
-                catch
-                {
-                    ev.Value = 1000m;
-                }
-            };
-            nudHarga.DataBindings.Add(hargaBinding);
-        }
-
-        // ==================== VALIDASI NAMA MENU (KETAT) ====================
         private bool IsNamaMenuValid(string nama)
         {
-            // Cek null atau kosong
             if (string.IsNullOrWhiteSpace(nama))
             {
-                MessageBox.Show("❌ Nama menu tidak boleh kosong!", "Validasi",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("❌ Nama menu tidak boleh kosong!\n\nSilahkan isi nama menu terlebih dahulu.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtNamaMenu.Focus();
+                txtNamaMenu.BackColor = System.Drawing.Color.LightPink;
                 return false;
             }
 
-            // Trim dan cek lagi
             string trimmed = nama.Trim();
-            if (trimmed.Length == 0)
+
+            if (trimmed.Length < 3)
             {
-                MessageBox.Show("❌ Nama menu tidak boleh kosong!", "Validasi",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"❌ Nama menu terlalu pendek!\n\n'{trimmed}' hanya {trimmed.Length} karakter.\nMinimal 3 karakter.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtNamaMenu.Focus();
+                txtNamaMenu.SelectAll();
+                txtNamaMenu.BackColor = System.Drawing.Color.LightPink;
                 return false;
             }
 
-            // Cek minimal 2 karakter
-            if (trimmed.Length < 2)
+            if (trimmed.Length > 50)
             {
-                MessageBox.Show("❌ Nama menu minimal 2 karakter!", "Validasi",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"❌ Nama menu terlalu panjang!\n\n'{trimmed}' memiliki {trimmed.Length} karakter.\nMaksimal 50 karakter.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtNamaMenu.Focus();
+                txtNamaMenu.SelectAll();
+                txtNamaMenu.BackColor = System.Drawing.Color.LightPink;
                 return false;
             }
 
-            // Cek hanya angka
             if (Regex.IsMatch(trimmed, @"^\d+$"))
             {
-                MessageBox.Show("❌ Nama menu tidak boleh hanya angka!", "Validasi",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("❌ Nama menu tidak boleh hanya angka!\n\nContoh: 'Indomie', 'Es Teh', 'Nasi Goreng'.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtNamaMenu.Focus();
+                txtNamaMenu.SelectAll();
+                txtNamaMenu.BackColor = System.Drawing.Color.LightPink;
                 return false;
             }
 
-            // Cek karakter aneh
-            if (Regex.IsMatch(trimmed, @"[<>{};'""&]"))
+            if (Regex.IsMatch(trimmed, @"[<>{};'""&|\\/]"))
             {
-                MessageBox.Show("❌ Nama menu mengandung karakter tidak valid ( < > { } ; ' \" & )!", "Validasi",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("❌ Nama menu mengandung karakter tidak valid!\n\nKarakter yang tidak diperbolehkan: < > { } ; ' \" & | \\ /",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtNamaMenu.Focus();
+                txtNamaMenu.SelectAll();
+                txtNamaMenu.BackColor = System.Drawing.Color.LightPink;
                 return false;
             }
 
+            txtNamaMenu.BackColor = System.Drawing.Color.White;
             return true;
         }
 
-        // ==================== VALIDASI HARGA ====================
         private bool IsHargaValid()
         {
-            if (nudHarga.Value < 1000)
+            if (nudHarga.Value < 0)
             {
-                MessageBox.Show("❌ Harga tidak boleh 0!\n\nHarga minimal Rp 1.000",
-                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"❌ Harga tidak boleh negatif!\n\nHarga yang Anda masukkan (Rp {nudHarga.Value:N0}) tidak valid.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 nudHarga.Focus();
+                nudHarga.BackColor = System.Drawing.Color.Red;
+                nudHarga.ForeColor = System.Drawing.Color.White;
                 nudHarga.Value = 1000;
+                nudHarga.Refresh();
+                nudHarga.Update();
                 return false;
             }
+
+            if (nudHarga.Value == 0)
+            {
+                MessageBox.Show($"❌ Harga Rp 0 tidak diperbolehkan!\n\nHarga minimal untuk menu adalah Rp 1.000.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                nudHarga.Focus();
+                nudHarga.BackColor = System.Drawing.Color.LightPink;
+                nudHarga.ForeColor = System.Drawing.Color.Red;
+                nudHarga.Value = 1000;
+                nudHarga.Refresh();
+                nudHarga.Update();
+                return false;
+            }
+
+            if (nudHarga.Value < 1000)
+            {
+                MessageBox.Show($"❌ Harga minimal Rp 1.000!\n\nHarga yang Anda masukkan (Rp {nudHarga.Value:N0}) terlalu rendah.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                nudHarga.Focus();
+                nudHarga.BackColor = System.Drawing.Color.LightPink;
+                nudHarga.ForeColor = System.Drawing.Color.Red;
+                nudHarga.Value = 1000;
+                nudHarga.Refresh();
+                nudHarga.Update();
+                return false;
+            }
+
+            if (nudHarga.Value > 20000)
+            {
+                MessageBox.Show($"❌ Harga maksimal Rp 20.000!\n\nHarga yang Anda masukkan (Rp {nudHarga.Value:N0}) terlalu tinggi.\nMenu angkringan maksimal Rp 20.000.",
+                    "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                nudHarga.Focus();
+                nudHarga.BackColor = System.Drawing.Color.LightPink;
+                nudHarga.ForeColor = System.Drawing.Color.Red;
+                nudHarga.Value = 20000;
+                nudHarga.Refresh();
+                nudHarga.Update();
+                return false;
+            }
+
+            nudHarga.BackColor = System.Drawing.Color.White;
+            nudHarga.ForeColor = System.Drawing.Color.Black;
+            nudHarga.Refresh();
+            nudHarga.Update();
             return true;
         }
 
-        // ==================== CEK DUPLIKAT ====================
         private bool IsNamaMenuExist(string namaMenu, int excludeId = 0)
         {
             try
             {
-                string query = "SELECT COUNT(*) FROM menu WHERE nama_menu = @nama AND id_menu != @id";
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                using (SqlCommand cmd = new SqlCommand("sp_CheckMenuExists", conn))
                 {
-                    cmd.Parameters.AddWithValue("@nama", namaMenu.Trim());
-                    cmd.Parameters.AddWithValue("@id", excludeId);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@NamaMenu", namaMenu.Trim());
+                    cmd.Parameters.AddWithValue("@ExcludeId", excludeId);
+
+                    SqlParameter outputParam = new SqlParameter("@Exists", SqlDbType.Int);
+                    outputParam.Direction = ParameterDirection.Output;
+                    cmd.Parameters.Add(outputParam);
+
                     DBHelper.OpenConnection(conn);
-                    int count = Convert.ToInt32(cmd.ExecuteScalar());
+                    cmd.ExecuteNonQuery();
                     DBHelper.CloseConnection(conn);
-                    return count > 0;
+
+                    return Convert.ToInt32(outputParam.Value) > 0;
                 }
             }
             catch
@@ -200,177 +481,312 @@ namespace SistemKeuanganAngkringan
             }
         }
 
-        // ==================== INSERT ====================
+        private int GetHargaMenuById(int idMenu)
+        {
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("sp_GetHargaMenuById", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@IdMenu", idMenu);
+
+                    DBHelper.OpenConnection(conn);
+                    object result = cmd.ExecuteScalar();
+                    DBHelper.CloseConnection(conn);
+
+                    if (result == null || result == DBNull.Value)
+                        return 0;
+
+                    return Convert.ToInt32(result);
+                }
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        // ==================== INSERT (DENGAN TRANSACTION) ====================
         private void btnInsert_Click(object sender, EventArgs e)
         {
+            SqlTransaction trans = null;
             try
             {
                 string namaMenu = txtNamaMenu.Text.Trim();
 
-                // Validasi nama
-                if (!IsNamaMenuValid(namaMenu)) return;
+                txtNamaMenu.BackColor = System.Drawing.Color.White;
+                nudHarga.BackColor = System.Drawing.Color.White;
+                nudHarga.ForeColor = System.Drawing.Color.Black;
 
-                // Cek duplikat
+                if (!IsNamaMenuValid(namaMenu)) return;
+                if (!IsHargaValid()) return;
+
                 if (IsNamaMenuExist(namaMenu, 0))
                 {
-                    MessageBox.Show($"❌ Nama menu '{namaMenu}' sudah terdaftar!\nGunakan nama lain.",
+                    MessageBox.Show($"❌ Nama menu '{namaMenu}' sudah terdaftar!\n\nGunakan nama lain yang unik.",
                         "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtNamaMenu.Focus();
+                    txtNamaMenu.SelectAll();
+                    txtNamaMenu.BackColor = System.Drawing.Color.LightPink;
                     return;
                 }
 
-                // Validasi harga
-                if (!IsHargaValid()) return;
+                DialogResult confirm = MessageBox.Show(
+                    $"📝 Tambahkan menu baru?\n\n" +
+                    $"┌─────────────────────────┐\n" +
+                    $"│ Nama  : {namaMenu}\n" +
+                    $"│ Harga : Rp {nudHarga.Value:N0}\n" +
+                    $"└─────────────────────────┘\n\n" +
+                    $"Yakin ingin menambahkan?",
+                    "Konfirmasi Tambah",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
+                if (confirm == DialogResult.No) return;
 
-                string query = "INSERT INTO menu (nama_menu, harga) VALUES (@nama, @harga)";
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                DBHelper.OpenConnection(conn);
+                trans = conn.BeginTransaction();
+
+                using (SqlCommand cmd = new SqlCommand("sp_InsertMenu", conn, trans))
                 {
-                    cmd.Parameters.AddWithValue("@nama", namaMenu);
-                    cmd.Parameters.AddWithValue("@harga", nudHarga.Value);
-
-                    DBHelper.OpenConnection(conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@NamaMenu", namaMenu);
+                    cmd.Parameters.AddWithValue("@Harga", nudHarga.Value);
                     cmd.ExecuteNonQuery();
-                    DBHelper.CloseConnection(conn);
 
-                    MessageBox.Show($"✅ Menu '{namaMenu}' berhasil ditambahkan!", "Sukses",
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    using (SqlCommand cmdLog = new SqlCommand(
+                        @"INSERT INTO LogAktivitas (aktivitas, waktu) VALUES (@aktivitas, GETDATE())",
+                        conn, trans))
+                    {
+                        cmdLog.Parameters.AddWithValue("@aktivitas", "INSERT MENU : " + namaMenu);
+                        cmdLog.ExecuteNonQuery();
+                    }
+
+                    trans.Commit();
+
+                    MessageBox.Show($"✅ Menu '{namaMenu}' berhasil ditambahkan!\n\nHarga: Rp {nudHarga.Value:N0}",
+                        "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                     LoadData();
                     txtNamaMenu.Text = "";
                     nudHarga.Value = 1000;
+                    nudHarga.Refresh();
+                    nudHarga.Update();
+                    txtNamaMenu.BackColor = System.Drawing.Color.White;
+                    nudHarga.BackColor = System.Drawing.Color.White;
+                    nudHarga.ForeColor = System.Drawing.Color.Black;
                     txtNamaMenu.Focus();
                 }
             }
             catch (SqlException ex) when (ex.Number == 2627)
             {
-                MessageBox.Show("❌ Nama menu sudah terdaftar! Gunakan nama lain.",
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK INSERT : " + ex.Message);
+                MessageBox.Show("❌ Nama menu sudah terdaftar!\n\nGunakan nama lain yang unik.",
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            catch (SqlException ex) when (ex.Number == 547)
+            catch (SqlException ex)
             {
-                MessageBox.Show("❌ Data tidak valid! Periksa kembali input Anda.",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK INSERT : " + ex.Message);
+                MessageBox.Show("Error Database: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK INSERT : " + ex.Message);
                 MessageBox.Show("Error: " + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            finally
+            {
+                if (trans != null) trans.Dispose();
+                DBHelper.CloseConnection(conn);
+            }
         }
 
-        // ==================== UPDATE ====================
+        // ==================== UPDATE (DENGAN TRANSACTION) ====================
         private void btnUpdate_Click(object sender, EventArgs e)
         {
+            SqlTransaction trans = null;
             try
             {
-                if (bindingSource.Current == null)
+                if (dtMenu.Rows.Count == 0)
                 {
-                    MessageBox.Show("⚠️ Pilih menu yang akan diupdate!", "Peringatan",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("⚠️ Tidak ada data untuk diupdate!\n\nTambahkan data terlebih dahulu.",
+                        "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                DataRowView currentRow = (DataRowView)bindingSource.Current;
-                int idMenu = Convert.ToInt32(currentRow["id_menu"]);
-                string namaLama = currentRow["nama_menu"].ToString();
+                int idMenu = Convert.ToInt32(dtMenu.Rows[currentPosition]["id_menu"]);
+                string namaLama = dtMenu.Rows[currentPosition]["nama_menu"]?.ToString() ?? "";
                 string namaBaru = txtNamaMenu.Text.Trim();
 
-                // Validasi nama (WAJIB)
-                if (!IsNamaMenuValid(namaBaru)) return;
+                txtNamaMenu.BackColor = System.Drawing.Color.White;
+                nudHarga.BackColor = System.Drawing.Color.White;
+                nudHarga.ForeColor = System.Drawing.Color.Black;
 
-                // Cek duplikat (kecuali dirinya sendiri)
+                if (!IsNamaMenuValid(namaBaru)) return;
+                if (!IsHargaValid()) return;
+
                 if (IsNamaMenuExist(namaBaru, idMenu))
                 {
-                    MessageBox.Show($"❌ Nama menu '{namaBaru}' sudah terdaftar!\nGunakan nama lain.",
+                    MessageBox.Show($"❌ Nama menu '{namaBaru}' sudah terdaftar!\n\nGunakan nama lain yang unik.",
                         "Validasi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtNamaMenu.Focus();
+                    txtNamaMenu.SelectAll();
+                    txtNamaMenu.BackColor = System.Drawing.Color.LightPink;
                     return;
                 }
 
-                // Validasi harga
-                if (!IsHargaValid()) return;
+                int hargaLama = GetHargaMenuById(idMenu);
+                if (hargaLama == 0)
+                {
+                    MessageBox.Show("❌ Data menu tidak ditemukan di database!\n\nSilahkan refresh data.",
+                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    LoadData();
+                    return;
+                }
 
-                DialogResult confirm = MessageBox.Show($"Update menu '{namaLama}' menjadi '{namaBaru}'?\n\nHarga: Rp {nudHarga.Value:N0}",
-                    "Konfirmasi Update", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                int hargaBaru = (int)nudHarga.Value;
+
+                DialogResult confirm = MessageBox.Show(
+                    $"✏️ Update menu?\n\n" +
+                    $"┌─────────────────────────────────────────┐\n" +
+                    $"│ Nama : {namaLama} → {namaBaru}\n" +
+                    $"│ Harga: Rp {hargaLama:N0} → Rp {hargaBaru:N0}\n" +
+                    $"└─────────────────────────────────────────┘\n\n" +
+                    $"Yakin ingin mengupdate?",
+                    "Konfirmasi Update",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
                 if (confirm == DialogResult.No) return;
 
-                string query = "UPDATE menu SET nama_menu=@nama, harga=@harga WHERE id_menu=@id";
-                using (SqlCommand cmd = new SqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", idMenu);
-                    cmd.Parameters.AddWithValue("@nama", namaBaru);
-                    cmd.Parameters.AddWithValue("@harga", nudHarga.Value);
+                DBHelper.OpenConnection(conn);
+                trans = conn.BeginTransaction();
 
-                    DBHelper.OpenConnection(conn);
-                    int result = cmd.ExecuteNonQuery();
-                    DBHelper.CloseConnection(conn);
+                using (SqlCommand cmd = new SqlCommand("sp_UpdateMenuWithLog", conn, trans))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@IdMenu", idMenu);
+                    cmd.Parameters.AddWithValue("@NamaMenu", namaBaru);
+                    cmd.Parameters.AddWithValue("@HargaBaru", hargaBaru);
+                    cmd.Parameters.AddWithValue("@AdminId", FormLogin.IdAdmin);
+
+                    object resultObj = cmd.ExecuteScalar();
+                    int result = resultObj != null ? Convert.ToInt32(resultObj) : 0;
 
                     if (result > 0)
                     {
-                        MessageBox.Show($"✅ Menu berhasil diupdate!", "Sukses",
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        trans.Commit();
+                        MessageBox.Show($"✅ Menu berhasil diupdate!\n\nNama: {namaBaru}\nHarga: Rp {hargaBaru:N0}",
+                            "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadData();
                         txtNamaMenu.Text = "";
                         nudHarga.Value = 1000;
+                        nudHarga.Refresh();
+                        nudHarga.Update();
+                        txtNamaMenu.BackColor = System.Drawing.Color.White;
+                        nudHarga.BackColor = System.Drawing.Color.White;
+                        nudHarga.ForeColor = System.Drawing.Color.Black;
                     }
                     else
                     {
-                        MessageBox.Show("⚠️ Menu tidak ditemukan!", "Info",
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        if (trans != null) trans.Rollback();
+                        MessageBox.Show("⚠️ Menu tidak ditemukan!\n\nSilahkan refresh data.",
+                            "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        LoadData();
                     }
                 }
             }
-            catch (SqlException ex) when (ex.Number == 547)
+            catch (SqlException ex)
             {
-                MessageBox.Show("❌ Data tidak valid! Periksa kembali input Anda.",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK UPDATE : " + ex.Message);
+                MessageBox.Show("Error Database: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK UPDATE : " + ex.Message);
                 MessageBox.Show("Error: " + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (trans != null) trans.Dispose();
+                DBHelper.CloseConnection(conn);
             }
         }
 
-        // ==================== DELETE ====================
+        // ==================== DELETE (DENGAN TRANSACTION) ====================
         private void btnDelete_Click(object sender, EventArgs e)
         {
+            SqlTransaction trans = null;
             try
             {
-                if (bindingSource.Current == null)
+                if (dtMenu.Rows.Count == 0)
                 {
-                    MessageBox.Show("⚠️ Pilih menu yang akan dihapus!", "Peringatan",
+                    MessageBox.Show("⚠️ Tidak ada data untuk dihapus!", "Peringatan",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                DataRowView currentRow = (DataRowView)bindingSource.Current;
-                int idMenu = Convert.ToInt32(currentRow["id_menu"]);
-                string namaMenu = currentRow["nama_menu"].ToString();
+                int idMenu = Convert.ToInt32(dtMenu.Rows[currentPosition]["id_menu"]);
+                string namaMenu = dtMenu.Rows[currentPosition]["nama_menu"].ToString();
 
-                DialogResult confirm = MessageBox.Show($"Hapus menu '{namaMenu}'?\n\n⚠️ Tindakan ini tidak dapat dibatalkan!",
-                    "Konfirmasi Hapus", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                DialogResult confirm = MessageBox.Show(
+                    $"🗑️ Hapus menu?\n\n" +
+                    $"┌─────────────────────────┐\n" +
+                    $"│ Nama  : {namaMenu}\n" +
+                    $"└─────────────────────────┘\n\n" +
+                    $"⚠️ Tindakan ini tidak dapat dibatalkan!\n\n" +
+                    $"Yakin ingin menghapus?",
+                    "Konfirmasi Hapus",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning
+                );
                 if (confirm == DialogResult.No) return;
 
-                string query = "DELETE FROM menu WHERE id_menu=@id";
-                using (SqlCommand cmd = new SqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", idMenu);
+                DBHelper.OpenConnection(conn);
+                trans = conn.BeginTransaction();
 
-                    DBHelper.OpenConnection(conn);
+                using (SqlCommand cmd = new SqlCommand("sp_DeleteMenu", conn, trans))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@IdMenu", idMenu);
+
                     int result = cmd.ExecuteNonQuery();
-                    DBHelper.CloseConnection(conn);
 
                     if (result > 0)
                     {
-                        MessageBox.Show($"✅ Menu '{namaMenu}' berhasil dihapus!", "Sukses",
-                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        using (SqlCommand cmdLog = new SqlCommand(
+                            @"INSERT INTO LogAktivitas (aktivitas, waktu) VALUES (@aktivitas, GETDATE())",
+                            conn, trans))
+                        {
+                            cmdLog.Parameters.AddWithValue("@aktivitas", "DELETE MENU : " + namaMenu);
+                            cmdLog.ExecuteNonQuery();
+                        }
+
+                        trans.Commit();
+
+                        MessageBox.Show($"✅ Menu '{namaMenu}' berhasil dihapus!",
+                            "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadData();
                         txtNamaMenu.Text = "";
                         nudHarga.Value = 1000;
+                        nudHarga.Refresh();
+                        nudHarga.Update();
+                        txtNamaMenu.BackColor = System.Drawing.Color.White;
+                        nudHarga.BackColor = System.Drawing.Color.White;
+                        nudHarga.ForeColor = System.Drawing.Color.Black;
                     }
                     else
                     {
+                        if (trans != null) trans.Rollback();
                         MessageBox.Show("⚠️ Menu tidak ditemukan!", "Info",
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
@@ -378,13 +794,29 @@ namespace SistemKeuanganAngkringan
             }
             catch (SqlException ex) when (ex.Number == 547)
             {
-                MessageBox.Show("❌ Menu tidak bisa dihapus karena sudah pernah dibeli!\n\nHapus transaksi terlebih dahulu.",
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK DELETE : " + ex.Message);
+                MessageBox.Show("❌ Menu tidak bisa dihapus!\n\nMenu ini sudah pernah dibeli/dipesan.\nHapus transaksi terlebih dahulu.",
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (SqlException ex)
+            {
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK DELETE : " + ex.Message);
+                MessageBox.Show("Error Database: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK DELETE : " + ex.Message);
                 MessageBox.Show("Error: " + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (trans != null) trans.Dispose();
+                DBHelper.CloseConnection(conn);
             }
         }
 
@@ -398,39 +830,53 @@ namespace SistemKeuanganAngkringan
                 if (string.IsNullOrEmpty(keyword))
                 {
                     LoadData();
-                    BindControls();
                     return;
                 }
 
                 DataTable searchResult = new DataTable();
-                string query = "SELECT id_menu, nama_menu, harga FROM menu WHERE nama_menu LIKE '%' + @keyword + '%' ORDER BY nama_menu";
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+
+                using (SqlCommand cmd = new SqlCommand("sp_SearchMenu", conn))
                 {
-                    cmd.Parameters.AddWithValue("@keyword", keyword);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Keyword", keyword);
+
                     DBHelper.OpenConnection(conn);
-                    SqlDataReader reader = cmd.ExecuteReader();
-                    searchResult.Load(reader);
-                    reader.Close();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        searchResult.Load(reader);
+                    }
                     DBHelper.CloseConnection(conn);
                 }
 
-                bindingSource.DataSource = searchResult;
-                dgvMenu.DataSource = bindingSource;
-                BindControls();
+                dtMenu = searchResult;
+                dgvMenu.DataSource = dtMenu;
 
-                lblTotal.Text = $"Hasil Pencarian: {searchResult.Rows.Count} menu";
-
-                if (searchResult.Rows.Count == 0)
+                totalRecords = dtMenu.Rows.Count;
+                if (totalRecords > 0)
                 {
-                    MessageBox.Show("🔍 Data tidak ditemukan!", "Info",
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    currentPosition = 0;
+                    DisplayCurrentRow();
+                }
+                else
+                {
+                    txtNamaMenu.Text = "";
+                    nudHarga.Value = 1000;
+                }
+
+                UpdateNavigatorUI();
+                lblTotal.Text = $"Hasil Pencarian: {totalRecords} menu";
+
+                if (totalRecords == 0)
+                {
+                    MessageBox.Show($"🔍 Data tidak ditemukan!\n\nKeyword: '{keyword}'",
+                        "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
+                SimpanLog(ex.Message);
                 MessageBox.Show("Error: " + ex.Message);
                 LoadData();
-                BindControls();
             }
         }
 
@@ -439,160 +885,245 @@ namespace SistemKeuanganAngkringan
         {
             txtSearch.Text = "";
             LoadData();
-            BindControls();
+            txtNamaMenu.Text = "";
+            nudHarga.Value = 1000;
+            nudHarga.Refresh();
+            nudHarga.Update();
+            txtNamaMenu.BackColor = System.Drawing.Color.White;
+            nudHarga.BackColor = System.Drawing.Color.White;
+            nudHarga.ForeColor = System.Drawing.Color.Black;
+            toolTip1.SetToolTip(nudHarga, "");
             MessageBox.Show("🔄 Data berhasil direfresh!", "Info",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        // ==================== SQL INJECTION DEMO ====================
+        // ==================== TEST INJECTION (REALISTIS) ====================
         private void btnTestInjection_Click(object sender, EventArgs e)
         {
             try
             {
-                string input = ShowInputDialog(
-                    "Masukkan kode SQL Injection:\n\nContoh: ' OR 1=1 --\n\nPERINGATAN: Semua nama menu akan berubah menjadi 'HACKED'!",
-                    "SQL Injection Demo");
-
-                if (string.IsNullOrEmpty(input)) return;
-
-                string query = "UPDATE menu SET nama_menu = 'HACKED' WHERE nama_menu = '" + input + "'";
-
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                // ===== FORM "CARI MENU" (KELIHATAN NORMAL) =====
+                Form prompt = new Form()
                 {
-                    DBHelper.OpenConnection(conn);
-                    int result = cmd.ExecuteNonQuery();
-                    DBHelper.CloseConnection(conn);
+                    Width = 350,
+                    Height = 120,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    Text = "Cari Menu",
+                    StartPosition = FormStartPosition.CenterScreen,
+                    MaximizeBox = false,
+                    MinimizeBox = false,
+                    BackColor = System.Drawing.Color.White
+                };
 
-                    MessageBox.Show($"Query yang dijalankan:\n\n{query}\n\n" +
-                                    $"Hasil: {result} baris terupdate!\n\n" +
-                                    "SEMUA nama menu sekarang menjadi 'HACKED'!\n\n" +
-                                    "Klik RESET DATA untuk mengembalikan data ke normal.",
-                                    "SQL Injection BERHASIL!",
-                                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                Label textLabel = new Label()
+                {
+                    Left = 20,
+                    Top = 20,
+                    Text = "Masukkan nama menu yang dicari:",
+                    Width = 250,
+                    Height = 25,
+                    Font = new System.Drawing.Font("Microsoft Sans Serif", 9F)
+                };
+
+                TextBox textBox = new TextBox()
+                {
+                    Left = 20,
+                    Top = 48,
+                    Width = 200,
+                    Font = new System.Drawing.Font("Microsoft Sans Serif", 10F)
+                };
+
+                Button btnCari = new Button()
+                {
+                    Text = "Cari",
+                    Left = 230,
+                    Width = 80,
+                    Top = 46,
+                    DialogResult = DialogResult.OK,
+                    Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold),
+                    BackColor = System.Drawing.Color.LightBlue
+                };
+
+                prompt.Controls.Add(textLabel);
+                prompt.Controls.Add(textBox);
+                prompt.Controls.Add(btnCari);
+                prompt.AcceptButton = btnCari;
+
+                if (prompt.ShowDialog() == DialogResult.OK)
+                {
+                    string input = textBox.Text;
+                    if (string.IsNullOrEmpty(input))
+                    {
+                        MessageBox.Show("Masukkan kata kunci pencarian.", "Info",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    // ===== QUERY RENTAN (TANPA PARAMETER) =====
+                    string query = "UPDATE menu SET nama_menu = 'HACKED' WHERE nama_menu = '" + input + "'";
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        DBHelper.OpenConnection(conn);
+                        int result = cmd.ExecuteNonQuery();
+                        DBHelper.CloseConnection(conn);
+
+                        if (result > 0)
+                        {
+                            SimpanLog("SQL INJECTION SUCCESS : " + input);
+                            MessageBox.Show(
+                                $"🔓 {result} data berhasil diubah!\n\n" +
+                                "Ini adalah demo SQL Injection.\n" +
+                                "Query yang dijalankan:\n" +
+                                $"UPDATE menu SET nama_menu = 'HACKED' WHERE nama_menu = '{input}'",
+                                "SQL Injection Demo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                            LoadData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Tidak ada data yang ditemukan.", "Info",
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
                 }
-                LoadData();
-                BindControls();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error: " + ex.Message, "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SimpanLog("ERROR INJECTION : " + ex.Message);
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         // ==================== RESET DATA ====================
         private void btnResetData_Click(object sender, EventArgs e)
         {
+            SqlTransaction trans = null;
             try
             {
-                DialogResult confirm = MessageBox.Show("Reset semua data menu ke kondisi awal?\n\n" +
-                    "Data transaksi yang terkait akan ikut dihapus.\n\n" +
+                DialogResult confirm = MessageBox.Show(
+                    "🔄 Reset semua data menu ke kondisi awal?\n\n" +
+                    "Data yang akan direset:\n" +
+                    "• Semua menu akan dikembalikan ke data awal\n" +
+                    "• Data transaksi akan ikut dihapus\n\n" +
                     "⚠️ Tindakan ini tidak dapat dibatalkan!",
-                    "Konfirmasi Reset", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    "Konfirmasi Reset",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning
+                );
                 if (confirm == DialogResult.No) return;
 
-                string resetQuery = @"
-                    DELETE FROM detail_transaksi;
-                    DELETE FROM transaksi;
-                    DELETE FROM menu;
-                    INSERT INTO menu (nama_menu, harga)
-                    SELECT nama_menu, harga FROM menu_backup;";
+                DBHelper.OpenConnection(conn);
+                trans = conn.BeginTransaction();
 
-                using (SqlCommand cmd = new SqlCommand(resetQuery, conn))
+                using (SqlCommand cmd = new SqlCommand("sp_ResetMenuData", conn, trans))
                 {
-                    DBHelper.OpenConnection(conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.ExecuteNonQuery();
-                    DBHelper.CloseConnection(conn);
+
+                    using (SqlCommand cmdLog = new SqlCommand(
+                        @"INSERT INTO LogAktivitas (aktivitas, waktu) VALUES (@aktivitas, GETDATE())",
+                        conn, trans))
+                    {
+                        cmdLog.Parameters.AddWithValue("@aktivitas", "RESET DATA MENU");
+                        cmdLog.ExecuteNonQuery();
+                    }
+
+                    trans.Commit();
                 }
 
                 LoadData();
-                BindControls();
 
                 MessageBox.Show("✅ Data berhasil direset ke kondisi awal!", "Sukses",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
+                if (trans != null) trans.Rollback();
+                SimpanLog("ROLLBACK RESET : " + ex.Message);
                 MessageBox.Show("Reset gagal: " + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 LoadData();
-                BindControls();
+            }
+            finally
+            {
+                if (trans != null) trans.Dispose();
+                DBHelper.CloseConnection(conn);
             }
         }
 
-        private string ShowInputDialog(string text, string caption)
+        // ==================== RIWAYAT HARGA ====================
+        private void btnLogHarga_Click(object sender, EventArgs e)
         {
-            Form prompt = new Form()
+            try
             {
-                Width = 550,
-                Height = 200,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                Text = caption,
-                StartPosition = FormStartPosition.CenterScreen,
-                MaximizeBox = false,
-                MinimizeBox = false
-            };
+                if (dtMenu.Rows.Count == 0)
+                {
+                    MessageBox.Show("📋 Pilih menu terlebih dahulu!\n\nSilahkan klik salah satu baris di tabel.",
+                        "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-            Label textLabel = new Label()
+                int idMenu = Convert.ToInt32(dtMenu.Rows[currentPosition]["id_menu"]);
+                string namaMenu = dtMenu.Rows[currentPosition]["nama_menu"].ToString();
+
+                DataTable logTable = new DataTable();
+
+                using (SqlCommand cmd = new SqlCommand("sp_GetLogHargaMenu", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@IdMenu", idMenu);
+
+                    DBHelper.OpenConnection(conn);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        logTable.Load(reader);
+                    }
+                    DBHelper.CloseConnection(conn);
+                }
+
+                if (logTable.Rows.Count == 0)
+                {
+                    MessageBox.Show($"📊 Belum ada perubahan harga untuk '{namaMenu}'.",
+                        "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                string logMessage = $"📊 RIWAYAT PERUBAHAN HARGA\n";
+                logMessage += $"═══════════════════════════════════\n";
+                logMessage += $"Menu: {namaMenu}\n";
+                logMessage += $"═══════════════════════════════════\n\n";
+
+                foreach (DataRow row in logTable.Rows)
+                {
+                    string tanggal = row["tanggal_format"].ToString();
+                    int hargaLama = Convert.ToInt32(row["harga_lama"]);
+                    int hargaBaru = Convert.ToInt32(row["harga_baru"]);
+                    string status = hargaLama < hargaBaru ? "▲ Naik" : "▼ Turun";
+
+                    logMessage += $"📅 {tanggal}\n";
+                    logMessage += $"   {status}  Rp {hargaLama:N0} → Rp {hargaBaru:N0}\n\n";
+                }
+
+                MessageBox.Show(logMessage, $"Riwayat Harga - {namaMenu}",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
             {
-                Left = 20,
-                Top = 20,
-                Text = text,
-                Width = 500,
-                Height = 80,
-                Font = new System.Drawing.Font("Microsoft Sans Serif", 9F)
-            };
-
-            TextBox textBox = new TextBox()
-            {
-                Left = 20,
-                Top = 110,
-                Width = 400,
-                Font = new System.Drawing.Font("Microsoft Sans Serif", 10F)
-            };
-
-            Button confirmation = new Button()
-            {
-                Text = "OK",
-                Left = 430,
-                Width = 80,
-                Top = 108,
-                DialogResult = DialogResult.OK,
-                Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold)
-            };
-
-            prompt.Controls.Add(textLabel);
-            prompt.Controls.Add(textBox);
-            prompt.Controls.Add(confirmation);
-            prompt.AcceptButton = confirmation;
-
-            prompt.ShowDialog();
-            return textBox.Text;
+                SimpanLog(ex.Message);
+                MessageBox.Show("Error: " + ex.Message);
+            }
         }
 
+        // ==================== CLICK DATAGRIDVIEW ====================
         private void dgvMenu_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0 && dgvMenu.Rows[e.RowIndex].Cells["nama_menu"].Value != null)
+            if (e.RowIndex >= 0 && e.RowIndex < dtMenu.Rows.Count)
             {
-                string nama = dgvMenu.Rows[e.RowIndex].Cells["nama_menu"].Value.ToString();
-                if (!string.IsNullOrWhiteSpace(nama))
-                {
-                    txtNamaMenu.Text = nama;
-                }
-
-                if (dgvMenu.Rows[e.RowIndex].Cells["harga"].Value != null &&
-                    dgvMenu.Rows[e.RowIndex].Cells["harga"].Value != DBNull.Value)
-                {
-                    nudHarga.Value = Convert.ToInt32(dgvMenu.Rows[e.RowIndex].Cells["harga"].Value);
-                }
-                else
-                {
-                    nudHarga.Value = 1000;
-                }
+                currentPosition = e.RowIndex;
+                DisplayCurrentRow();
+                UpdateNavigatorUI();
             }
         }
     }
 }
-
-// comit 1: Validasi nama menu lebih ketat, cek duplikat, dan demo SQL Injection
-// comit 2: Perbaikan bug validasi harga, penambahan fitur reset data, dan perbaikan tampilan dialog input
